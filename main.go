@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"os"
 	"sync/atomic"
+	"time"
 
 	"github.com/Zallu35/ChirpyServer/internal/database"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
@@ -16,6 +18,14 @@ import (
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	database       *database.Queries
+	platform       string
+}
+
+type User struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
 }
 
 func main() {
@@ -32,6 +42,7 @@ func main() {
 	multiplexer := http.NewServeMux()
 	api := &apiConfig{
 		database: dbQueries,
+		platform: os.Getenv("PLATFORM"),
 	}
 	rootHandler := http.FileServer(http.Dir(rootPath))
 	multiplexer.Handle("/app/", http.StripPrefix("/app", api.middlewareMetricsInc(rootHandler)))
@@ -40,6 +51,7 @@ func main() {
 	multiplexer.HandleFunc("GET /api/healthz", api.healthzFunc)
 	multiplexer.HandleFunc("POST /admin/reset", api.resetFunc)
 	multiplexer.HandleFunc("POST /api/validate_chirp", api.lengthValidationFunc)
+	multiplexer.HandleFunc("POST /api/users", api.createUser)
 
 	myServer := &http.Server{
 		Addr:    ":" + port,
