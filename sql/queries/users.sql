@@ -1,7 +1,22 @@
 -- name: CreateUser :one
-INSERT INTO users (id, created_at, updated_at, email)
-VALUES (gen_random_uuid(), NOW(), NOW(), $1)
+INSERT INTO users (id, created_at, updated_at, email, hashed_password)
+VALUES (gen_random_uuid(), NOW(), NOW(), $1, $2)
 RETURNING *;
 
 -- name: DeleteAllUsers :exec
 DELETE FROM users;
+
+-- name: PostChirp :one
+INSERT INTO posts (id, created_at, updated_at, body, user_id)
+VALUES (gen_random_uuid(), NOW(), NOW(), $1, $2)
+RETURNING *;
+
+-- name: RetrieveChirps :many
+SELECT * FROM posts 
+ORDER BY created_at ASC;
+
+-- name: GetSingleChirp :one
+Select * FROM posts WHERE id = $1;
+
+-- name: LoginQuery :one
+SELECT * FROM users WHERE email = $1;

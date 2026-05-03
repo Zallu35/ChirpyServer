@@ -19,6 +19,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	database       *database.Queries
 	platform       string
+	secret         string
 }
 
 type User struct {
@@ -26,6 +27,15 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
+	Token     string    `json:"token"`
+}
+
+type Post struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Body      string    `json:"body"`
+	UserID    uuid.UUID `json:"user_id"`
 }
 
 func main() {
@@ -43,6 +53,7 @@ func main() {
 	api := &apiConfig{
 		database: dbQueries,
 		platform: os.Getenv("PLATFORM"),
+		secret:   os.Getenv("SECRET"),
 	}
 	rootHandler := http.FileServer(http.Dir(rootPath))
 	multiplexer.Handle("/app/", http.StripPrefix("/app", api.middlewareMetricsInc(rootHandler)))
@@ -50,8 +61,11 @@ func main() {
 	multiplexer.HandleFunc("GET /admin/metrics", api.metricsFunc)
 	multiplexer.HandleFunc("GET /api/healthz", api.healthzFunc)
 	multiplexer.HandleFunc("POST /admin/reset", api.resetFunc)
-	multiplexer.HandleFunc("POST /api/validate_chirp", api.lengthValidationFunc)
+	multiplexer.HandleFunc("POST /api/chirps", api.handlerPostChirp)
 	multiplexer.HandleFunc("POST /api/users", api.createUser)
+	multiplexer.HandleFunc("GET /api/chirps", api.handlerRetrieveChirps)
+	multiplexer.HandleFunc("GET /api/chirps/{chirpID}", api.handlerRetrieveSingleChirp)
+	multiplexer.HandleFunc("POST /api/login", api.login)
 
 	myServer := &http.Server{
 		Addr:    ":" + port,
