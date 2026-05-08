@@ -4,12 +4,21 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/Zallu35/ChirpyServer/internal/auth"
 	"github.com/Zallu35/ChirpyServer/internal/database"
+	"github.com/google/uuid"
 )
+
+type loginResponse struct {
+	ID           uuid.UUID `json:"id"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	Email        string    `json:"email"`
+	Token        string    `json:"token"`
+	RefreshToken string    `json:"refresh_token"`
+}
 
 func (a *apiConfig) createUser(w http.ResponseWriter, r *http.Request) {
 	type userData struct {
@@ -47,16 +56,14 @@ func (a *apiConfig) createUser(w http.ResponseWriter, r *http.Request) {
 		usr.CreatedAt,
 		usr.UpdatedAt,
 		usr.Email,
-		"",
 	}
 	respondWithJSON(w, http.StatusCreated, jsonUsr)
 }
 
 func (a *apiConfig) login(w http.ResponseWriter, r *http.Request) {
 	type userData struct {
-		Pw               string `json:"password"`
-		Email            string `json:"email"`
-		ExpiresInSeconds int    `json:"expires_in_seconds"`
+		Pw    string `json:"password"`
+		Email string `json:"email"`
 	}
 	decoder := json.NewDecoder(r.Body)
 	requestData := userData{}
@@ -86,21 +93,21 @@ func (a *apiConfig) login(w http.ResponseWriter, r *http.Request) {
 		errorResponse(w, http.StatusUnauthorized, "Incorrect email or password")
 		return
 	}
-	t := ""
-	if requestData.ExpiresInSeconds < 1 || requestData.ExpiresInSeconds > 3600 {
-		t = "3600s"
-	} else {
-		t = strconv.Itoa(requestData.ExpiresInSeconds) + "s"
+	token, err := auth.MakeJWT(loginRequest.ID, a.secret)
+	if err != nil {
+		log.Printf("login - Failed to create JWT:, %v", err)
+		errorResponse(w, http.StatusInternalServerError, "Error creating access token")
 	}
-	duration, err := time.ParseDuration(t)
-	token, err := auth.MakeJWT(loginRequest.ID, a.secret, duration)
+	refreshToken := auth.MakeRefreshToken()
+	a.database.AddRefreshToken(r.Context(), database.AddRefreshTokenParams{Token: refreshToken, UserID: loginRequest.ID, ExpiresAt: time.Now().Add(time.Hour * 24 * 60)})
 
-	jsonUsr := User{
+	rsp := loginResponse{
 		loginRequest.ID,
 		loginRequest.CreatedAt,
 		loginRequest.UpdatedAt,
 		loginRequest.Email,
 		token,
+		refreshToken,
 	}
-	respondWithJSON(w, http.StatusOK, jsonUsr)
+	respondWithJSON(w, http.StatusOK, rsp)
 }

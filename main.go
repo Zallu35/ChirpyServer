@@ -27,7 +27,6 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
-	Token     string    `json:"token"`
 }
 
 type Post struct {
@@ -66,6 +65,8 @@ func main() {
 	multiplexer.HandleFunc("GET /api/chirps", api.handlerRetrieveChirps)
 	multiplexer.HandleFunc("GET /api/chirps/{chirpID}", api.handlerRetrieveSingleChirp)
 	multiplexer.HandleFunc("POST /api/login", api.login)
+	multiplexer.HandleFunc("POST /api/refresh", api.handlerRefresh)
+	multiplexer.HandleFunc("POST /api/revoke", api.handlerRevoke)
 
 	myServer := &http.Server{
 		Addr:    ":" + port,

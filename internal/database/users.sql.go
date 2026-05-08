@@ -7,9 +7,37 @@ package database
 
 import (
 	"context"
+	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
+
+const addRefreshToken = `-- name: AddRefreshToken :one
+INSERT INTO refresh_tokens (token, created_at, updated_at, user_id, expires_at)
+VALUES ($1, NOW(), NOW(), $2, $3)
+RETURNING token, created_at, updated_at, user_id, expires_at, revoked_at
+`
+
+type AddRefreshTokenParams struct {
+	Token     string
+	UserID    uuid.UUID
+	ExpiresAt time.Time
+}
+
+func (q *Queries) AddRefreshToken(ctx context.Context, arg AddRefreshTokenParams) (RefreshToken, error) {
+	row := q.db.QueryRowContext(ctx, addRefreshToken, arg.Token, arg.UserID, arg.ExpiresAt)
+	var i RefreshToken
+	err := row.Scan(
+		&i.Token,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.UserID,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+	)
+	return i, err
+}
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, created_at, updated_at, email, hashed_password)
@@ -58,6 +86,23 @@ func (q *Queries) GetSingleChirp(ctx context.Context, id uuid.UUID) (Post, error
 		&i.Body,
 		&i.UserID,
 	)
+	return i, err
+}
+
+const getUserFromRefreshToken = `-- name: GetUserFromRefreshToken :one
+SELECT user_id, expires_at, revoked_at FROM refresh_tokens WHERE token = $1
+`
+
+type GetUserFromRefreshTokenRow struct {
+	UserID    uuid.UUID
+	ExpiresAt time.Time
+	RevokedAt sql.NullTime
+}
+
+func (q *Queries) GetUserFromRefreshToken(ctx context.Context, token string) (GetUserFromRefreshTokenRow, error) {
+	row := q.db.QueryRowContext(ctx, getUserFromRefreshToken, token)
+	var i GetUserFromRefreshTokenRow
+	err := row.Scan(&i.UserID, &i.ExpiresAt, &i.RevokedAt)
 	return i, err
 }
 
@@ -134,4 +179,13 @@ func (q *Queries) RetrieveChirps(ctx context.Context) ([]Post, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const revokeToken = `-- name: RevokeToken :exec
+UPDATE refresh_tokens SET revoked_at = NOW(), updated_at = NOW() WHERE token = $1
+`
+
+func (q *Queries) RevokeToken(ctx context.Context, token string) error {
+	_, err := q.db.ExecContext(ctx, revokeToken, token)
+	return err
 }
