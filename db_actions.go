@@ -111,3 +111,51 @@ func (a *apiConfig) login(w http.ResponseWriter, r *http.Request) {
 	}
 	respondWithJSON(w, http.StatusOK, rsp)
 }
+
+func (a *apiConfig) updateUserCredentials(w http.ResponseWriter, r *http.Request) {
+	token, er := auth.GetBearerToken(r.Header)
+	if er != nil {
+		log.Printf("update user credentials: %v", er)
+		errorResponse(w, http.StatusUnauthorized, "Missing authorization header")
+		return
+	}
+	usr, er := auth.ValidateJWT(token, a.secret)
+	if er != nil {
+		log.Printf("update user credentials: %v", er)
+		errorResponse(w, http.StatusUnauthorized, "Error validating token")
+		return
+	}
+
+	type userData struct {
+		Pw    string `json:"password"`
+		Email string `json:"email"`
+	}
+	decoder := json.NewDecoder(r.Body)
+	requestData := userData{}
+	err := decoder.Decode(&requestData)
+	if err != nil {
+		log.Printf("update user credentials - Error decoding request: %s", err)
+		errorResponse(w, http.StatusInternalServerError, "Error decoding request")
+		return
+	}
+
+	hashedPW, err := auth.HashPassword(requestData.Pw)
+	if err != nil {
+		log.Printf("update user credentials - Error hashing new password: %v", err)
+		errorResponse(w, http.StatusInternalServerError, "Error hashing new password")
+		return
+	}
+	usrDat, er := a.database.UpdateCredentials(r.Context(), database.UpdateCredentialsParams{ID: usr, Email: requestData.Email, HashedPassword: hashedPW})
+	if er != nil {
+		log.Printf("update user credentials - Error updating: %v", er)
+		errorResponse(w, http.StatusInternalServerError, "Error updating credentials")
+		return
+	}
+	respUser := User{
+		usrDat.ID,
+		usrDat.CreatedAt,
+		usrDat.UpdatedAt,
+		usrDat.Email,
+	}
+	respondWithJSON(w, http.StatusOK, respUser)
+}

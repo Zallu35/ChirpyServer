@@ -67,6 +67,7 @@ func main() {
 	multiplexer.HandleFunc("POST /api/login", api.login)
 	multiplexer.HandleFunc("POST /api/refresh", api.handlerRefresh)
 	multiplexer.HandleFunc("POST /api/revoke", api.handlerRevoke)
+	multiplexer.HandleFunc("PUT /api/users", api.updateUserCredentials)
 
 	myServer := &http.Server{
 		Addr:    ":" + port,
