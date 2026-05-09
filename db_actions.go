@@ -159,3 +159,47 @@ func (a *apiConfig) updateUserCredentials(w http.ResponseWriter, r *http.Request
 	}
 	respondWithJSON(w, http.StatusOK, respUser)
 }
+
+func (a *apiConfig) deleteChirp(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		log.Printf("deleteChirp: %v", err)
+		errorResponse(w, http.StatusUnauthorized, "Missing authorization header")
+		return
+	}
+	usr, err := auth.ValidateJWT(token, a.secret)
+	if err != nil {
+		log.Printf("deleteChirp: %v", err)
+		errorResponse(w, http.StatusUnauthorized, "Error validating token")
+		return
+	}
+
+	stringID := r.PathValue("chirpID")
+	chirpID, err := uuid.Parse(stringID)
+	if err != nil {
+		log.Printf("deleteChirp: %v", err)
+		errorResponse(w, http.StatusInternalServerError, "Error parsing ID")
+		return
+	}
+
+	chirpCheck, err := a.database.GetSingleChirp(r.Context(), chirpID)
+	if err != nil {
+		log.Printf("deleteChirp: %v", err)
+		errorResponse(w, http.StatusNotFound, "Invalid chirp ID")
+		return
+	}
+
+	if usr != chirpCheck.UserID {
+		log.Printf("deleteChirp: UserID mismatch")
+		errorResponse(w, http.StatusForbidden, "Invalid UserID")
+		return
+	}
+
+	err = a.database.DeleteChirp(r.Context(), chirpID)
+	if err != nil {
+		log.Printf("deleteChirp: %v", err)
+		errorResponse(w, http.StatusInternalServerError, "Error deleting chirp")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
