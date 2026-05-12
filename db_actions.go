@@ -18,6 +18,7 @@ type loginResponse struct {
 	Email        string    `json:"email"`
 	Token        string    `json:"token"`
 	RefreshToken string    `json:"refresh_token"`
+	IsChirpyRed  bool      `json:"is_chirpy_red"`
 }
 
 func (a *apiConfig) createUser(w http.ResponseWriter, r *http.Request) {
@@ -56,6 +57,7 @@ func (a *apiConfig) createUser(w http.ResponseWriter, r *http.Request) {
 		usr.CreatedAt,
 		usr.UpdatedAt,
 		usr.Email,
+		usr.IsChirpyRed,
 	}
 	respondWithJSON(w, http.StatusCreated, jsonUsr)
 }
@@ -108,6 +110,7 @@ func (a *apiConfig) login(w http.ResponseWriter, r *http.Request) {
 		loginRequest.Email,
 		token,
 		refreshToken,
+		loginRequest.IsChirpyRed,
 	}
 	respondWithJSON(w, http.StatusOK, rsp)
 }
@@ -156,6 +159,7 @@ func (a *apiConfig) updateUserCredentials(w http.ResponseWriter, r *http.Request
 		usrDat.CreatedAt,
 		usrDat.UpdatedAt,
 		usrDat.Email,
+		usrDat.IsChirpyRed,
 	}
 	respondWithJSON(w, http.StatusOK, respUser)
 }

@@ -34,7 +34,10 @@ UPDATE refresh_tokens SET revoked_at = NOW(), updated_at = NOW() WHERE token = $
 
 -- name: UpdateCredentials :one
 UPDATE users SET email = $2, hashed_password = $3, updated_at = NOW() WHERE id = $1
-RETURNING id, created_at, updated_at, email, hashed_password;
+RETURNING id, created_at, updated_at, email, hashed_password, is_chirpy_red;
 
 -- name: DeleteChirp :exec
 DELETE FROM posts WHERE id = $1;
+
+-- name: UpgradeChirpyRed :exec
+UPDATE users SET is_chirpy_red = true WHERE id = $1;

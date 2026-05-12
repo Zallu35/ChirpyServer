@@ -23,10 +23,11 @@ type apiConfig struct {
 }
 
 type User struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
+	ID          uuid.UUID `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	Email       string    `json:"email"`
+	IsChirpyRed bool      `json:"is_chirpy_red"`
 }
 
 type Post struct {
@@ -69,6 +70,7 @@ func main() {
 	multiplexer.HandleFunc("POST /api/revoke", api.handlerRevoke)
 	multiplexer.HandleFunc("PUT /api/users", api.updateUserCredentials)
 	multiplexer.HandleFunc("DELETE /api/chirps/{chirpID}", api.deleteChirp)
+	multiplexer.HandleFunc("POST /api/polka/webhooks", api.updateChirpyRed)
 
 	myServer := &http.Server{
 		Addr:    ":" + port,
