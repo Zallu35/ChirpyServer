@@ -20,6 +20,7 @@ type apiConfig struct {
 	database       *database.Queries
 	platform       string
 	secret         string
+	polka_key      string
 }
 
 type User struct {
@@ -51,9 +52,10 @@ func main() {
 	port := "8080"
 	multiplexer := http.NewServeMux()
 	api := &apiConfig{
-		database: dbQueries,
-		platform: os.Getenv("PLATFORM"),
-		secret:   os.Getenv("SECRET"),
+		database:  dbQueries,
+		platform:  os.Getenv("PLATFORM"),
+		secret:    os.Getenv("SECRET"),
+		polka_key: os.Getenv("POLKA_KEY"),
 	}
 	rootHandler := http.FileServer(http.Dir(rootPath))
 	multiplexer.Handle("/app/", http.StripPrefix("/app", api.middlewareMetricsInc(rootHandler)))

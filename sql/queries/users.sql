@@ -15,6 +15,10 @@ RETURNING *;
 SELECT * FROM posts 
 ORDER BY created_at ASC;
 
+-- name: RetrieveChirpsByAuthor :many
+SELECT * FROM posts WHERE user_id = $1
+ORDER BY created_at ASC;
+
 -- name: GetSingleChirp :one
 Select * FROM posts WHERE id = $1;
 

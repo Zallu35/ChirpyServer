@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/Zallu35/ChirpyServer/internal/auth"
@@ -77,11 +78,35 @@ func cleanChirp(original string) string {
 }
 
 func (a *apiConfig) handlerRetrieveChirps(w http.ResponseWriter, r *http.Request) {
-	chirps, err := a.database.RetrieveChirps(r.Context())
-	if err != nil {
-		log.Printf("RetrieveChirps - Error retrieving chirps: %s", err)
-		errorResponse(w, http.StatusInternalServerError, "Error retrieving chirps")
-		return
+	queryCheck := r.URL.Query().Get("author_id")
+	chirps := []database.Post{}
+	if queryCheck != "" {
+		authorID, err := uuid.Parse(queryCheck)
+		if err != nil {
+			log.Printf("handlerRetrieveChirps: %v", err)
+			errorResponse(w, http.StatusInternalServerError, "Error parsing author ID")
+			return
+		}
+		chirps, err = a.database.RetrieveChirpsByAuthor(r.Context(), authorID)
+		if err != nil {
+			log.Printf("RetrieveChirps - Error retrieving chirps: %s", err)
+			errorResponse(w, http.StatusInternalServerError, "Error retrieving chirps")
+			return
+		}
+	} else {
+		var err error
+		chirps, err = a.database.RetrieveChirps(r.Context())
+		if err != nil {
+			log.Printf("RetrieveChirps - Error retrieving chirps: %s", err)
+			errorResponse(w, http.StatusInternalServerError, "Error retrieving chirps")
+			return
+		}
+	}
+	sortCheck := r.URL.Query().Get("sort")
+	if sortCheck == "desc" {
+		sort.Slice(chirps, func(i, j int) bool { return chirps[i].CreatedAt.After(chirps[j].CreatedAt) })
+	} else {
+		sort.Slice(chirps, func(i, j int) bool { return chirps[i].CreatedAt.Before(chirps[j].CreatedAt) })
 	}
 	chirpArray := []Post{}
 	for i := range chirps {

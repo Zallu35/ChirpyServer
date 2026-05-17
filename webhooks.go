@@ -5,10 +5,17 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/Zallu35/ChirpyServer/internal/auth"
 	"github.com/google/uuid"
 )
 
 func (a *apiConfig) updateChirpyRed(w http.ResponseWriter, r *http.Request) {
+	requestKey, err := auth.GetAPIKey(r.Header)
+	if requestKey != a.polka_key {
+		log.Printf("Invalid API Key")
+		errorResponse(w, http.StatusUnauthorized, "Invalid Key")
+	}
+
 	type polkaRequest struct {
 		Event string `json:"event"`
 		Data  struct {
@@ -18,7 +25,7 @@ func (a *apiConfig) updateChirpyRed(w http.ResponseWriter, r *http.Request) {
 
 	decoder := json.NewDecoder(r.Body)
 	polkDat := polkaRequest{}
-	err := decoder.Decode(&polkDat)
+	err = decoder.Decode(&polkDat)
 	if err != nil {
 		log.Printf("updateChirpyRed: %v", err)
 		errorResponse(w, http.StatusInternalServerError, "Error decdoing request body")

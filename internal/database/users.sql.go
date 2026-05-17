@@ -192,6 +192,40 @@ func (q *Queries) RetrieveChirps(ctx context.Context) ([]Post, error) {
 	return items, nil
 }
 
+const retrieveChirpsByAuthor = `-- name: RetrieveChirpsByAuthor :many
+SELECT id, created_at, updated_at, body, user_id FROM posts WHERE user_id = $1
+ORDER BY created_at ASC
+`
+
+func (q *Queries) RetrieveChirpsByAuthor(ctx context.Context, userID uuid.UUID) ([]Post, error) {
+	rows, err := q.db.QueryContext(ctx, retrieveChirpsByAuthor, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Post
+	for rows.Next() {
+		var i Post
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Body,
+			&i.UserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const revokeToken = `-- name: RevokeToken :exec
 UPDATE refresh_tokens SET revoked_at = NOW(), updated_at = NOW() WHERE token = $1
 `
